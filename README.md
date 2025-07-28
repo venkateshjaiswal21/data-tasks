@@ -1,2 +1,1 @@
-This repository contains genai tasks at nexturn training
-
+## This repository contains genai tasks at nexturn training
