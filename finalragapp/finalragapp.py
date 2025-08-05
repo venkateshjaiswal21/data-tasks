@@ -177,7 +177,7 @@ with col2:
     if st.session_state.answer:
         st.success(st.session_state.answer)
 
-# 6. (Optional) Evaluation section
+# 6. Evaluation 
 with st.expander("Step 3: Evaluate Answer (Optional)"):
     ground_truth = st.text_area("Paste the ground-truth answer here:")
     if st.button("Evaluate") and ground_truth:
