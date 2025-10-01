@@ -179,8 +179,8 @@ with col2:
             # CORRECTION 4: Added min_length to encourage more complete answers
             generated = generator(
                 prompt, 
-                max_length=5120, 
-                min_length=50, # Encourage more detailed answers
+                max_length=1024, 
+                min_length=300, # Encourage more detailed answers
                 clean_up_tokenization_spaces=True
             )[0]["generated_text"]
             st.session_state.answer = generated
