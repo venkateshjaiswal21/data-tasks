@@ -5,6 +5,12 @@ from qdrant_client.http import models as qm
 from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 import torch
 from PyPDF2 import PdfReader
+import hashlib
+
+
+# Utility: Create a hash for document list to invalidate cache properly
+def docs_hash(docs):
+    return hashlib.md5("".join(docs).encode("utf-8")).hexdigest()
 
 
 # CORRECTION 1: Improved chunking function for more robust document splitting
@@ -80,9 +86,10 @@ if not docs:
 
 st.sidebar.success(f"Processed {len(raw_docs)} documents into {len(docs)} chunks.")
 
-# 2. Embedder and Qdrant Setup (cache for speed)
+
+# 2. Embedder and Qdrant Setup (cache for speed with doc hash)
 @st.cache_resource
-def get_resources(_docs): # Pass docs to ensure cache invalidation on new docs
+def get_resources(_docs, key):
     embedder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
     embeddings = embedder.encode(_docs, show_progress_bar=True, normalize_embeddings=True)
     
@@ -102,7 +109,8 @@ def get_resources(_docs): # Pass docs to ensure cache invalidation on new docs
     )
     return embedder, client
 
-embedder, client = get_resources(docs)
+embedder, client = get_resources(docs, key=docs_hash(docs))
+
 
 # CORRECTION 2: Upgraded to a more powerful generator model
 @st.cache_resource
@@ -129,11 +137,13 @@ if query != st.session_state.last_query:
     st.session_state.answer = ""
     st.session_state.last_query = query
 
+
 def retrieve(query, top_k):
     """Retrieve top_k relevant text chunks from Qdrant."""
     q_emb = embedder.encode([query], normalize_embeddings=True)[0].tolist()
     response = client.search(collection_name="docs", query_vector=q_emb, limit=top_k)
     return [hit.payload["text"] for hit in response]
+
 
 # Main layout columns
 col1, col2 = st.columns(2)
@@ -149,7 +159,9 @@ with col2:
     st.subheader("Generated Answer")
     # CORRECTION 3: Improved prompt engineering
     prompt_template = """
-    Answer the question based *only* on the following context. If the context does not contain the answer, say "The context does not contain the answer to this question."
+    Answer the question based *only* on the following context. 
+    If the context does not contain the answer, say 
+    "The context does not contain the answer to this question."
 
     Context:
     {context}
@@ -176,6 +188,7 @@ with col2:
     # CORRECTION 5: Simplified and corrected answer display logic
     if st.session_state.answer:
         st.success(st.session_state.answer)
+
 
 # 6. Evaluation 
 with st.expander("Step 3: Evaluate Answer (Optional)"):
